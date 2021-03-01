@@ -20,3 +20,4 @@ Use arrow keys to navigate to another context, press enter to switch to the high
 
 - [kubeswitch](https://github.com/danielb42/kubeswitch): also tree-view based selection, but with K8s integration that requires some privileges on configured clusters.
 - [kubectx](https://github.com/ahmetb/kubectx): includes more functionality but does not offer visual selection.
+- [kpick](https://github.com/dcaiafa/kpick): same functionality but drops all unknown configuration values in your KUBECONFIG and thus might break it
