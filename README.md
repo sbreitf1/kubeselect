@@ -5,7 +5,7 @@ Visually switch between configured Kubernetes Contexts in your KUBECONFIG on com
 ## Install
 
 ```sh
-go install github.com/sbreitf1/kubeselect
+GO111MODULE=on go get github.com/sbreitf1/kubeselect
 ```
 
 ## Usage
