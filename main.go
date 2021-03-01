@@ -132,64 +132,64 @@ func main() {
 func getContexts(conf interface{}) ([]context, error) {
 	confMap, ok := conf.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid type %T for config map", conf)
+		return nil, fmt.Errorf("invalid root type '%T' for kube-config", conf)
 	}
 
 	contextsObj, ok := confMap["contexts"]
 	if !ok {
-		return nil, fmt.Errorf("missing contexts entry")
+		return nil, fmt.Errorf("missing 'contexts' in kube-config")
 	}
 
 	contextsList, ok := contextsObj.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid type %T for contexts list", contextsObj)
+		return nil, fmt.Errorf("invalid type '%T' for 'contexts' in kube-config", contextsObj)
 	}
 
 	contexts := make([]context, 0)
-	for _, obj := range contextsList {
+	for i, obj := range contextsList {
 		objMap, ok := obj.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("invalid type %T for context entry map", obj)
+			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d]' in kube-config", obj, i)
 		}
 
 		nameObj, ok := objMap["name"]
 		if !ok {
-			return nil, fmt.Errorf("missing name entry")
+			return nil, fmt.Errorf("missing 'contexts[%d].name' in kube-config", i)
 		}
 
 		name, ok := nameObj.(string)
 		if !ok {
-			return nil, fmt.Errorf("invalid type %T for name entry", obj)
+			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].name' in kube-config", nameObj, i)
 		}
 
 		contextObj, ok := objMap["context"]
 		if !ok {
-			return nil, fmt.Errorf("missing context entry")
+			return nil, fmt.Errorf("missing 'contexts[%d].context' in kube-config", i)
 		}
 
 		contextMap, ok := contextObj.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("invalid type %T for context map", obj)
+			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].context' in kube-config", contextObj, i)
 		}
 
 		clusterObj, ok := contextMap["cluster"]
 		if !ok {
-			return nil, fmt.Errorf("missing cluster entry")
+			return nil, fmt.Errorf("missing 'contexts[%d].context.cluster' in kube-config", i)
 		}
 
 		clusterName, ok := clusterObj.(string)
 		if !ok {
-			return nil, fmt.Errorf("invalid type %T for cluster entry", obj)
+			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].context.cluster' in kube-config", clusterObj, i)
 		}
 
 		namespaceObj, ok := contextMap["namespace"]
 		if !ok {
-			return nil, fmt.Errorf("missing namespace entry")
+			return nil, fmt.Errorf("missing 'contexts[%d].context.namespace' in kube-config", i)
 		}
 
 		namespace, ok := namespaceObj.(string)
 		if !ok {
-			return nil, fmt.Errorf("invalid type %T for namespace", obj)
+			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].context.namespace' in kube-config", namespaceObj, i)
 		}
 
 		contexts = append(contexts, context{
@@ -233,7 +233,7 @@ func groupContextsByCluster(contexts []context) []cluster {
 func getSelectedContext(conf interface{}) (string, error) {
 	confMap, ok := conf.(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("invalid type %T for config map", conf)
+		return "", fmt.Errorf("invalid root type '%T' for kube-config", conf)
 	}
 
 	currentContextObj, ok := confMap["current-context"]
@@ -243,7 +243,7 @@ func getSelectedContext(conf interface{}) (string, error) {
 
 	currentContext, ok := currentContextObj.(string)
 	if !ok {
-		return "", fmt.Errorf("invalid type %T for current context entry", conf)
+		return "", fmt.Errorf("invalid type '%T' for 'current-context' in kube-config", currentContextObj)
 	}
 
 	return currentContext, nil
