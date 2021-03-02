@@ -25,9 +25,9 @@ type context struct {
 
 func main() {
 	kubeConfigFile := os.Getenv("KUBECONFIG")
+
 	if len(kubeConfigFile) == 0 {
-		fmt.Println("ERROR: no KUBECONFIG defined")
-		os.Exit(1)
+		kubeConfigFile = os.Getenv("HOME") + "/.kube/config"
 	}
 
 	data, err := ioutil.ReadFile(kubeConfigFile)
@@ -125,7 +125,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Println(fmt.Sprintf("switched to context %q", userSelectedContext))
+		fmt.Printf("switched to context %q\n", userSelectedContext)
 	}
 }
 
