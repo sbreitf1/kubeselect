@@ -1,0 +1,56 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+name: Build
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+    
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "1.15"
+
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect ./cmd/...
+      - run: tar czf kubeselect_linux_amd64.tar.gz kubeselect LICENSE README.md
+      - run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect ./cmd/...
+      - run: tar czf kubeselect_darwin_amd64.tar.gz kubeselect LICENSE README.md
+      # - run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect.exe ./cmd/...
+      # - run: zip kubeselect_windows_amd64.zip kubeselect.exe LICENSE README.md
+
+      - id: get_tag_name
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+      - uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_tag_name.outputs.VERSION }}
+          release_name: ${{ steps.get_tag_name.outputs.VERSION }}
+
+      - name: Upload linux asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: kubeselect_linux_amd64.tar.gz
+          asset_name: kubeselect_linux_amd64.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload darwin asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: kubeselect_darwin_amd64.tar.gz
+          asset_name: kubeselect_darwin_amd64.tar.gz
+          asset_content_type: application/gzip

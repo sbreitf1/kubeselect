@@ -125,7 +125,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Println(fmt.Sprintf("switched to context %q", userSelectedContext))
+		fmt.Printf("switched to context %q\n", userSelectedContext)
 	}
 }
 
