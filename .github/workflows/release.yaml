@@ -17,11 +17,11 @@ jobs:
         with:
           go-version: "1.15"
 
-      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect ./cmd/...
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect .
       - run: tar czf kubeselect_linux_amd64.tar.gz kubeselect LICENSE README.md
-      - run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect ./cmd/...
+      - run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect .
       - run: tar czf kubeselect_darwin_amd64.tar.gz kubeselect LICENSE README.md
-      # - run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect.exe ./cmd/...
+      # - run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect.exe .
       # - run: zip kubeselect_windows_amd64.zip kubeselect.exe LICENSE README.md
 
       - id: get_tag_name
