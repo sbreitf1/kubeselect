@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -27,7 +29,13 @@ func main() {
 	kubeConfigFile := os.Getenv("KUBECONFIG")
 
 	if len(kubeConfigFile) == 0 {
-		kubeConfigFile = os.Getenv("HOME") + "/.kube/config"
+		// try default config path in user home dir
+		usr, err := user.Current()
+		if err != nil {
+			fmt.Println("ERROR:", err.Error())
+			os.Exit(1)
+		}
+		kubeConfigFile = filepath.Join(usr.HomeDir, "/.kube/config")
 	}
 
 	data, err := ioutil.ReadFile(kubeConfigFile)
@@ -125,7 +133,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("switched to context %q\n", userSelectedContext)
+		fmt.Println(fmt.Sprintf("switched to context %q", userSelectedContext))
 	}
 }
 

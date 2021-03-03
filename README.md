@@ -1,6 +1,6 @@
 # kubeselect
 
-Visually switch between configured Kubernetes Contexts in your KUBECONFIG on command line.
+Visually switch between configured Kubernetes Contexts in your KUBECONFIG on command line. Do not use any namespace switching tools as this would alter your configured contexts and thus make kubeselect useless.
 
 ## Install
 

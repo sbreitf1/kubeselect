@@ -21,8 +21,8 @@ jobs:
       - run: tar czf kubeselect_linux_amd64.tar.gz kubeselect LICENSE README.md
       - run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect .
       - run: tar czf kubeselect_darwin_amd64.tar.gz kubeselect LICENSE README.md
-      # - run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect.exe .
-      # - run: zip kubeselect_windows_amd64.zip kubeselect.exe LICENSE README.md
+      - run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o kubeselect.exe .
+      - run: zip kubeselect_windows_amd64.zip kubeselect.exe LICENSE README.md
 
       - id: get_tag_name
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
@@ -54,3 +54,13 @@ jobs:
           asset_path: kubeselect_darwin_amd64.tar.gz
           asset_name: kubeselect_darwin_amd64.tar.gz
           asset_content_type: application/gzip
+
+      - name: Upload windows asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: kubeselect_windows_amd64.zip
+          asset_name: kubeselect_windows_amd64.zip
+          asset_content_type: application/zip

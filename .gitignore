@@ -4,6 +4,10 @@
 *.dll
 *.so
 *.dylib
+kubeselect
+kubeselect.exe
+*.tar.gz
+*.zip
 
 # Test binary, built with `go test -c`
 *.test
