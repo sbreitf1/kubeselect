@@ -33,7 +33,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: kubeselect_linux_amd64.tar.gz
-          asset_name: kubeselect_linux_amd64-${{VERSION}}.tar.gz
+          asset_name: kubeselect_linux_amd64-${{ steps.get_tag_name.outputs.VERSION }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Upload darwin asset
@@ -43,7 +43,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: kubeselect_darwin_amd64.tar.gz
-          asset_name: kubeselect_darwin_amd64-${{VERSION}}.tar.gz
+          asset_name: kubeselect_darwin_amd64-${{ steps.get_tag_name.outputs.VERSION }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Upload windows asset
@@ -53,5 +53,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: kubeselect_windows_amd64.zip
-          asset_name: kubeselect_windows_amd64-${{VERSION}}.zip
+          asset_name: kubeselect_windows_amd64-${{ steps.get_tag_name.outputs.VERSION }}.zip
           asset_content_type: application/zip
