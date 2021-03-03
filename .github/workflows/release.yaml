@@ -1,7 +1,7 @@
 on:
-  release:
-    types:
-      - created
+  push:
+    tags:
+      - 'v*'
 
 name: Build
 
@@ -25,6 +25,14 @@ jobs:
 
       - id: get_tag_name
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+      - uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_tag_name.outputs.VERSION }}
+          release_name: ${{ steps.get_tag_name.outputs.VERSION }}
 
       - name: Upload linux asset
         uses: actions/upload-release-asset@v1
