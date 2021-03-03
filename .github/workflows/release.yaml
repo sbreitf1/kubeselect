@@ -1,7 +1,6 @@
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [created]
 
 name: Build
 
@@ -26,40 +25,38 @@ jobs:
       - id: get_tag_name
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
-      - uses: actions/create-release@v1
-        id: create_release
+      - name: Get Release
+        id: get_release
+        uses: bruceadams/get-release@v1.2.2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_tag_name.outputs.VERSION }}
-          release_name: ${{ steps.get_tag_name.outputs.VERSION }}
+          GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Upload linux asset
+      - name: Upload Linux asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: kubeselect_linux_amd64.tar.gz
           asset_name: kubeselect_linux_amd64-${{ steps.get_tag_name.outputs.VERSION }}.tar.gz
           asset_content_type: application/gzip
 
-      - name: Upload darwin asset
+      - name: Upload Darwin asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: kubeselect_darwin_amd64.tar.gz
           asset_name: kubeselect_darwin_amd64-${{ steps.get_tag_name.outputs.VERSION }}.tar.gz
           asset_content_type: application/gzip
 
-      - name: Upload windows asset
+      - name: Upload Windows asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: kubeselect_windows_amd64.zip
           asset_name: kubeselect_windows_amd64-${{ steps.get_tag_name.outputs.VERSION }}.zip
           asset_content_type: application/zip
