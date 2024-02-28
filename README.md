@@ -5,13 +5,17 @@ Visually switch between configured Kubernetes Contexts in your KUBECONFIG on com
 ## Install
 
 ```sh
-GO111MODULE=on go get github.com/sbreitf1/kubeselect
+go install github.com/sbreitf1/kubeselect@latest
 ```
 
 ## Usage
 
 ```sh
+# show selection for all configured contexts
 kubeselect
+
+# create contexts for all namespaces for clusters that are referenced by existing contexts
+kubeselect -u
 ```
 
 Use arrow keys to navigate to another context, press enter to switch to the highlighted context. Currently selected context is marked as yellow.
