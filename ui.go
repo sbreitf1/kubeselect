@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -155,6 +156,34 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 				} else if ref := node.GetReference(); ref != nil {
 					if ref, ok := ref.(*tview.TreeNode); ok {
 						treeView.SetCurrentNode(ref)
+					}
+				}
+			}
+			return nil
+		}
+		r := event.Rune()
+		if r >= 'A' && r <= 'Z' {
+			r -= 'A'
+			r += 'a'
+		}
+		if r >= 'a' && r <= 'z' {
+			if node := treeView.GetCurrentNode(); node != nil {
+				if len(node.GetChildren()) > 0 && node.IsExpanded() {
+					for _, child := range node.GetChildren() {
+						if strings.HasPrefix(child.GetText(), string(r)) {
+							treeView.SetCurrentNode(child)
+							break
+						}
+					}
+				} else if ref := node.GetReference(); ref != nil {
+					//TODO move to next entry if selected starts with rune
+					if ref, ok := ref.(*tview.TreeNode); ok {
+						for _, child := range ref.GetChildren() {
+							if strings.HasPrefix(child.GetText(), string(r)) {
+								treeView.SetCurrentNode(child)
+								break
+							}
+						}
 					}
 				}
 			}

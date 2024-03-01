@@ -18,10 +18,12 @@ kubeselect
 kubeselect -u
 ```
 
-Use arrow keys to navigate to another context, press enter to switch to the highlighted context. Currently selected context is marked as yellow.
+Use arrow keys up and down to navigate to another context, press enter to switch to the highlighted context. Currently selected context is marked as yellow. Press escape to exit without changing the selected context.
+
+Arrow key left will select the parent cluster or collapse the selected one. Arrow key right will select the last context in the selected cluster or expand the selected cluster node. Type letters to select a context with given name in the expanded cluster node.
 
 # Comparison
 
-- [kubeswitch](https://github.com/danielb42/kubeswitch): also tree-view based selection, but with K8s integration that requires some privileges on configured clusters.
+- [kubeswitch](https://github.com/danielb42/kubeswitch): also tree-view based selection, but with mandatory K8s integration that requires some privileges on configured clusters.
 - [kubectx](https://github.com/ahmetb/kubectx): includes more functionality but does not offer visual selection.
 - [kpick](https://github.com/dcaiafa/kpick): same functionality but drops all unknown configuration values in your KUBECONFIG and thus might break it
