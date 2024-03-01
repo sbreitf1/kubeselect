@@ -60,8 +60,6 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 
 	var userSelectedContext string
 
-	var currentSelectionClusterNode, currentSelectionContextNode *tview.TreeNode
-
 	app := tview.NewApplication()
 	rootNode := tview.NewTreeNode("Clusters").SetSelectable(false)
 	treeView := tview.NewTreeView().SetRoot(rootNode)
@@ -91,7 +89,6 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 				// this is the currently selected context
 				contextNode.SetColor(tcell.ColorYellow)
 				treeView.SetCurrentNode(contextNode)
-				currentSelectionContextNode = contextNode
 				containsSelection = true
 			} else {
 				contextNode.SetColor(tcell.ColorTurquoise)
@@ -114,7 +111,6 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 		}
 		if expandMode {
 			if containsSelection {
-				currentSelectionClusterNode = clusterNode
 				clusterNode.SetColor(tcell.ColorYellow)
 			} else {
 				clusterNode.Collapse()
@@ -137,10 +133,10 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 			if expandMode {
 				if node := treeView.GetCurrentNode(); node != nil {
 					if len(node.GetChildren()) > 0 && !node.IsExpanded() {
+						// expand collapsed cluster node
 						treeView.GetCurrentNode().Expand()
-					} else if currentSelectionContextNode != nil && node == currentSelectionClusterNode {
-						treeView.SetCurrentNode(currentSelectionContextNode)
 					} else {
+						// jump to last children of selected cluster node
 						if childs := node.GetChildren(); len(childs) > 0 {
 							treeView.SetCurrentNode(childs[len(childs)-1])
 						}
@@ -152,8 +148,10 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 		if event.Key() == tcell.KeyLeft {
 			if node := treeView.GetCurrentNode(); node != nil {
 				if len(node.GetChildren()) > 0 && node.IsExpanded() {
+					// collapse cluster node
 					treeView.GetCurrentNode().Collapse()
 				} else if ref := node.GetReference(); ref != nil {
+					// jump to parent cluster node of selected context
 					if ref, ok := ref.(*tview.TreeNode); ok {
 						treeView.SetCurrentNode(ref)
 					}
@@ -169,6 +167,7 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 		if r >= 'a' && r <= 'z' {
 			if node := treeView.GetCurrentNode(); node != nil {
 				if len(node.GetChildren()) > 0 && node.IsExpanded() {
+					// select first child context node beginning with rune of selected cluster node
 					for _, child := range node.GetChildren() {
 						if strings.HasPrefix(child.GetText(), string(r)) {
 							treeView.SetCurrentNode(child)
@@ -176,9 +175,18 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 						}
 					}
 				} else if ref := node.GetReference(); ref != nil {
-					//TODO move to next entry if selected starts with rune
+					// select first child context node beginning with rune of parent cluster node of selected context node
 					if ref, ok := ref.(*tview.TreeNode); ok {
-						for _, child := range ref.GetChildren() {
+						childs := ref.GetChildren()
+						var offset int
+						for i := range childs {
+							if childs[i] == treeView.GetCurrentNode() {
+								offset = i + 1
+								break
+							}
+						}
+						for i := 0; i < len(childs); i++ {
+							child := childs[(offset+i+len(childs))%len(childs)]
 							if strings.HasPrefix(child.GetText(), string(r)) {
 								treeView.SetCurrentNode(child)
 								break
