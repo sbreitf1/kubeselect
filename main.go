@@ -14,7 +14,9 @@ func main() {
 
 	if len(os.Args) == 2 {
 		if os.Args[1] == "help" || os.Args[1] == "-help" || os.Args[1] == "--help" {
-			fmt.Println("HELP")
+			fmt.Println("kubeselect usage")
+			fmt.Println("--help   Display this help")
+			fmt.Println(" -u      Create contexts for all namespaces in all clusters")
 			os.Exit(0)
 		}
 		if os.Args[1] == "-u" {
@@ -34,7 +36,7 @@ func main() {
 	}
 
 	if err := cmdSelectContext(conf); err != nil {
-		fmt.Println("unsupported args")
+		fmt.Println("ERR:", err)
 		os.Exit(1)
 	}
 }
