@@ -13,9 +13,10 @@ go install github.com/sbreitf1/kubeselect@latest
 ```sh
 # show selection for all configured contexts
 kubeselect
+kubeselect select
 
 # create contexts for all namespaces for clusters that are referenced by existing contexts
-kubeselect -u
+kubeselect update
 ```
 
 Use arrow keys up and down to navigate to another context, press enter to switch to the highlighted context. Currently selected context is marked as yellow. Press escape to exit without changing the selected context.

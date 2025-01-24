@@ -3,40 +3,43 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/alecthomas/kong"
+)
+
+var (
+	cli struct {
+		Select struct {
+		} `cmd:"select" default:"withargs" help:"Select active Kubernetes Context."`
+
+		Update struct {
+		} `cmd:"update" help:"Create contexts for all Namespaces in configured clusters."`
+	}
 )
 
 func main() {
+	ctx := kong.Parse(&cli)
+	if err := execCmd(ctx.Command()); err != nil {
+		fmt.Println("ERR:", err)
+		os.Exit(1)
+	}
+}
+
+func execCmd(cmd string) error {
 	conf, err := ReadKubeConfig()
 	if err != nil {
 		fmt.Println("ERROR reading kube config:", err.Error())
 		os.Exit(1)
 	}
 
-	if len(os.Args) == 2 {
-		if os.Args[1] == "help" || os.Args[1] == "-help" || os.Args[1] == "--help" {
-			fmt.Println("kubeselect usage")
-			fmt.Println("--help   Display this help")
-			fmt.Println(" -u      Create contexts for all namespaces in all clusters")
-			os.Exit(0)
-		}
-		if os.Args[1] == "-u" {
-			fmt.Println("update config file")
-			if err := cmdUpdateConfigFile(conf); err != nil {
-				fmt.Println("ERROR:", err.Error())
-				os.Exit(1)
-			}
-			os.Exit(0)
-		}
-		fmt.Println("unsupported args")
-		os.Exit(1)
-	}
-	if len(os.Args) > 2 {
-		fmt.Println("unsupported args")
-		os.Exit(1)
-	}
+	switch cmd {
+	case "select":
+		return cmdSelectContext(conf)
 
-	if err := cmdSelectContext(conf); err != nil {
-		fmt.Println("ERR:", err)
-		os.Exit(1)
+	case "update":
+		return cmdUpdateConfigFile(conf)
+
+	default:
+		return fmt.Errorf("unknown command %q", cmd)
 	}
 }
