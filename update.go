@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,24 +37,35 @@ func cmdUpdateConfigFile(conf *KubeConfig) error {
 		return err
 	}
 
+	var m sync.Mutex
 	newContexts := make([]Context, 0)
+
+	var wg sync.WaitGroup
 	for _, cluster := range clusters {
-		namespaces, err := getNamespacesInContextsCluster(apiConf, cluster.Contexts[0].Name)
-		if err != nil {
-			return fmt.Errorf("gather namespaces for cluster %q: %w", cluster.Name, err)
-		}
-		sort.Strings(namespaces)
-		for _, ns := range namespaces {
-			newContexts = append(newContexts, Context{
-				Context: ContextData{
-					Cluster:   cluster.Name,
-					Namespace: ns,
-					User:      cluster.Contexts[0].Context.User,
-				},
-				Name: fmt.Sprintf("%s-%s", cluster.Name, ns),
-			})
-		}
+		wg.Go(func() {
+			namespaces, err := getNamespacesInContextsCluster(apiConf, cluster.Contexts[0].Name)
+			if err != nil {
+				fmt.Println("WARN: gather namespaces for cluster "+cluster.Name+":", err)
+				return
+			}
+
+			m.Lock()
+			defer m.Unlock()
+
+			sort.Strings(namespaces)
+			for _, ns := range namespaces {
+				newContexts = append(newContexts, Context{
+					Context: ContextData{
+						Cluster:   cluster.Name,
+						Namespace: ns,
+						User:      cluster.Contexts[0].Context.User,
+					},
+					Name: fmt.Sprintf("%s-%s", cluster.Name, ns),
+				})
+			}
+		})
 	}
+	wg.Wait()
 
 	conf.SetContexts(newContexts)
 	if err := conf.Save(); err != nil {
