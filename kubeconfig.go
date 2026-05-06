@@ -27,17 +27,6 @@ type Cluster struct {
 	Data map[string]interface{} `yaml:"cluster"`
 }
 
-/*type ClusterData struct {
-	Server                   string                   `yaml:"server"`
-	TLSServerName            string                   `yaml:"tls-server-name,omitempty"`
-	InsecureSkipTLSVerify    bool                     `yaml:"insecure-skip-tls-verify,omitempty"`
-	CertificateAuthority     string                   `yaml:"certificate-authority,omitempty"`
-	CertificateAuthorityData string                   `yaml:"certificate-authority-data,omitempty"`
-	ProxyURL                 string                   `yaml:"proxy-url,omitempty"`
-	DisableCompression       bool                     `yaml:"disable-compression,omitempty"`
-	Extensions               []map[string]interface{} `yaml:"extensions,omitempty"`
-}*/
-
 type Context struct {
 	Name string      `yaml:"name"`
 	Data ContextData `yaml:"context"`
@@ -66,13 +55,13 @@ func ReadKubeConfig() (*KubeConfig, error) {
 		return nil, err
 	}
 
-	var conf KubeConfig
-	if err := yaml.Unmarshal(rawData, &conf); err != nil {
+	conf, err := ParseKubeConfig(rawData)
+	if err != nil {
 		return nil, err
 	}
 
 	conf.file = kubeConfigFile
-	return &conf, nil
+	return conf, nil
 }
 
 func getKubeConfigFilePath() (string, error) {
@@ -88,6 +77,18 @@ func getKubeConfigFilePath() (string, error) {
 	}
 
 	return kubeConfigFile, nil
+}
+
+func ParseKubeConfig(data []byte) (*KubeConfig, error) {
+	var conf KubeConfig
+	if err := yaml.Unmarshal(data, &conf); err != nil {
+		return nil, err
+	}
+	return &conf, nil
+}
+
+func (conf *KubeConfig) SanityCheck() {
+	//TODO print all warnings
 }
 
 func (conf *KubeConfig) File() string {

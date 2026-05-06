@@ -13,7 +13,7 @@ var (
 		} `cmd:"select" default:"withargs" help:"Select active Kubernetes Context."`
 
 		Update struct {
-		} `cmd:"update" help:"Create contexts for all Namespaces in configured clusters."`
+		} `cmd:"update" help:"Create Contexts for all Namespaces in configured Clusters."`
 	}
 )
 
@@ -34,6 +34,8 @@ func execCmd(cmd string) error {
 
 	switch cmd {
 	case "select":
+		// print config warnings for default usage (will be visible when the selection screen closes)
+		conf.SanityCheck()
 		return cmdSelectContext(conf)
 
 	case "update":

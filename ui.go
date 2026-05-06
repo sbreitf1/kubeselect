@@ -10,8 +10,7 @@ import (
 
 func cmdSelectContext(conf *KubeConfig) error {
 	if len(conf.Contexts) == 0 {
-		fmt.Println("no contexts defined")
-		return nil
+		return fmt.Errorf("no contexts defined")
 	}
 
 	userSelectedContext, err := showSelectionUI(conf)

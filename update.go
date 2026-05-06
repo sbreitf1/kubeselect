@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 
@@ -19,54 +19,70 @@ import (
 )
 
 func cmdUpdateConfigFile(conf *KubeConfig) error {
-	return fmt.Errorf("update not implemented in current version")
-
-	contexts := []Context{}
-
-	if len(contexts) == 0 {
-		fmt.Println("no contexts defined")
-		return nil
+	if len(conf.Clusters) == 0 {
+		return fmt.Errorf("no clusters defined")
+	}
+	if len(conf.Users) == 0 {
+		return fmt.Errorf("no users defined")
 	}
 
-	clusters := []Cluster{}
-
-	loadingRules := &clientcmd.ClientConfigLoadingRules{Precedence: strings.Split(conf.file, ":")}
+	loadingRules := &clientcmd.ClientConfigLoadingRules{Precedence: []string{conf.File()}}
 	apiConf, err := loadingRules.Load()
 	if err != nil {
 		return err
 	}
 
 	var m sync.Mutex
-	newContexts := make([]Context, 0)
+	contextsByCluster := make(map[string][]Context)
+	for _, context := range conf.Contexts {
+		if _, ok := contextsByCluster[context.Data.Cluster]; !ok {
+			contextsByCluster[context.Data.Cluster] = make([]Context, 0)
+		}
+		contextsByCluster[context.Data.Cluster] = append(contextsByCluster[context.Data.Cluster], context)
+	}
 
 	var wg sync.WaitGroup
-	for _, cluster := range clusters {
+	for _, cluster := range conf.Clusters {
 		wg.Go(func() {
-			namespaces, err := getNamespacesInContextsCluster(apiConf, "context-name")
+			clusterUser, err := findUserForCluster(conf, apiConf, cluster.Name)
 			if err != nil {
-				fmt.Println("WARN: gather namespaces for cluster "+cluster.Name+":", err)
+				fmt.Println("ERR: failed to detect user for cluster "+cluster.Name+":", err)
 				return
 			}
 
-			m.Lock()
-			defer m.Unlock()
+			namespaces, err := getNamespacesInContextsCluster(apiConf, cluster.Name, clusterUser)
+			if err != nil {
+				fmt.Println("ERR: failed to gather namespaces for cluster "+cluster.Name+":", err)
+				return
+			}
 
 			sort.Strings(namespaces)
+			newContexts := make([]Context, 0, len(namespaces))
 			for _, ns := range namespaces {
 				newContexts = append(newContexts, Context{
 					Data: ContextData{
 						Cluster:   cluster.Name,
 						Namespace: ns,
-						User:      "context-user",
+						User:      clusterUser,
 					},
 					Name: fmt.Sprintf("%s-%s", cluster.Name, ns),
 				})
 			}
+
+			//fmt.Println("found", len(newContexts), "contexts for cluster", cluster.Name)
+
+			m.Lock()
+			defer m.Unlock()
+			contextsByCluster[cluster.Name] = newContexts
 		})
 	}
 	wg.Wait()
 
-	//conf.SetContexts(newContexts)
+	conf.Contexts = make([]Context, 0)
+	for _, contexts := range contextsByCluster {
+		conf.Contexts = append(conf.Contexts, contexts...)
+	}
+
 	if err := conf.Save(); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
@@ -75,8 +91,35 @@ func cmdUpdateConfigFile(conf *KubeConfig) error {
 	return nil
 }
 
-func getNamespacesInContextsCluster(apiConf *api.Config, contextName string) ([]string, error) {
-	config, err := clientcmd.NewDefaultClientConfig(*apiConf, &clientcmd.ConfigOverrides{CurrentContext: contextName}).ClientConfig()
+func findUserForCluster(conf *KubeConfig, apiConf *api.Config, clusterName string) (string, error) {
+	if user, ok := findUserForClusterFromExistingContext(conf, clusterName); ok {
+		return user, nil
+	}
+
+	//fmt.Println("WARN: no contexts for cluster", clusterName, "defined yet. need to auto-detect user")
+
+	//TODO auto-detect user for cluster
+	return "", fmt.Errorf("user auto-detection not implemented")
+}
+
+func findUserForClusterFromExistingContext(conf *KubeConfig, clusterName string) (string, bool) {
+	for _, context := range conf.Contexts {
+		if context.Data.Cluster == clusterName {
+			for _, user := range conf.Users {
+				if user.Name == context.Data.User {
+					// user exists, we can use it
+					return context.Data.User, true
+				}
+			}
+			fmt.Println("WARN: context", context.Name, "refers to undefined user", context.Data.User)
+		}
+	}
+	return "", false
+}
+
+func getNamespacesInContextsCluster(apiConf *api.Config, clusterName, userName string) ([]string, error) {
+	//config, err := clientcmd.NewDefaultClientConfig(*apiConf, &clientcmd.ConfigOverrides{CurrentContext: contextName}).ClientConfig()
+	config, err := prepareClientConfig(apiConf, clusterName, userName)
 	if err != nil {
 		return nil, err
 	}
@@ -97,4 +140,13 @@ func getNamespacesInContextsCluster(apiConf *api.Config, contextName string) ([]
 		namespaceNames[i] = namespaces.Items[i].Name
 	}
 	return namespaceNames, nil
+}
+
+func prepareClientConfig(apiConf *api.Config, clusterName, userName string) (*rest.Config, error) {
+	tmpConf := apiConf.DeepCopy()
+	tmpConf.Contexts["kubeselect-discovery"] = &api.Context{
+		Cluster:  clusterName,
+		AuthInfo: userName,
+	}
+	return clientcmd.NewDefaultClientConfig(*tmpConf, &clientcmd.ConfigOverrides{CurrentContext: "kubeselect-discovery"}).ClientConfig()
 }
