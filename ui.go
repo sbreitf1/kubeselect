@@ -9,35 +9,23 @@ import (
 )
 
 func cmdSelectContext(conf *KubeConfig) error {
-	contexts, err := conf.Contexts()
-	if err != nil {
-		return fmt.Errorf("parse contexts: %w", err)
-	}
-
-	if len(contexts) == 0 {
+	if len(conf.Contexts) == 0 {
 		fmt.Println("no contexts defined")
 		return nil
 	}
 
-	clusters := GroupContextsByCluster(contexts)
-
-	selectedContext, err := conf.SelectedContext()
-	if err != nil {
-		return fmt.Errorf("get selected context: %w", err)
-	}
-
-	userSelectedContext, err := showSelectionUI(clusters, selectedContext)
+	userSelectedContext, err := showSelectionUI(conf)
 	if err != nil {
 		return fmt.Errorf("show selection ui: %w", err)
 	}
 
 	if len(userSelectedContext) > 0 {
-		if userSelectedContext == selectedContext {
+		if userSelectedContext == conf.CurrentContext {
 			// nothing to do
 			return nil
 		}
 
-		conf.SetSelectedContext(userSelectedContext)
+		conf.CurrentContext = userSelectedContext
 		if err := conf.Save(); err != nil {
 			return fmt.Errorf("write config: %w", err)
 		}
@@ -47,14 +35,9 @@ func cmdSelectContext(conf *KubeConfig) error {
 	return nil
 }
 
-func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (string, error) {
-	var contextCount int
-	for _, cluster := range clusters {
-		contextCount += len(cluster.Contexts)
-	}
-
-	var expandMode bool
-	if contextCount > 30 {
+func showSelectionUI(conf *KubeConfig) (string, error) {
+	var expandMode bool // if true, a fully functional tree-view with collapseable cluster nodes will be displayed
+	if len(conf.Contexts) > 20 {
 		expandMode = true
 	}
 
@@ -64,8 +47,13 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 	rootNode := tview.NewTreeNode("Clusters").SetSelectable(false)
 	treeView := tview.NewTreeView().SetRoot(rootNode)
 	var firstContextNode *tview.TreeNode
-	for _, cluster := range clusters {
-		clusterNode := tview.NewTreeNode(cluster.Name).SetSelectable(expandMode)
+	for _, clusterName := range conf.GetSortedClusterNames() {
+		clusterContexts := conf.GetContextsForCluster(clusterName)
+		if len(clusterContexts) == 0 {
+			continue
+		}
+
+		clusterNode := tview.NewTreeNode(clusterName).SetSelectable(expandMode)
 		if expandMode {
 			clusterNode.SetSelectedFunc(func() {
 				if clusterNode.IsExpanded() {
@@ -77,15 +65,15 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 		}
 		clusterNode.SetColor(tcell.ColorGreen)
 		var containsSelection bool
-		for _, c := range cluster.Contexts {
+		for _, c := range clusterContexts {
 			var nodeName string
 			if expandMode {
-				nodeName = c.Context.Namespace
+				nodeName = c.Data.Namespace
 			} else {
 				nodeName = c.Name
 			}
 			contextNode := tview.NewTreeNode(nodeName).SetSelectable(true)
-			if c.Name == selectedContext {
+			if c.Name == conf.CurrentContext {
 				// this is the currently selected context
 				contextNode.SetColor(tcell.ColorYellow)
 				treeView.SetCurrentNode(contextNode)
@@ -166,16 +154,37 @@ func showSelectionUI(clusters []ClusterWithContexts, selectedContext string) (st
 		}
 		if r >= 'a' && r <= 'z' {
 			if node := treeView.GetCurrentNode(); node != nil {
-				if len(node.GetChildren()) > 0 && node.IsExpanded() {
-					// select first child context node beginning with rune of selected cluster node
-					for _, child := range node.GetChildren() {
-						if strings.HasPrefix(child.GetText(), string(r)) {
-							treeView.SetCurrentNode(child)
-							break
+				if len(node.GetChildren()) > 0 {
+					if node.IsExpanded() {
+						// select first child context node of selected cluster node beginning with type rune
+						for _, child := range node.GetChildren() {
+							if strings.HasPrefix(child.GetText(), string(r)) {
+								treeView.SetCurrentNode(child)
+								break
+							}
+						}
+
+					} else {
+						// select first (or next) cluster node beginning with typed rune
+						childs := rootNode.GetChildren()
+						var offset int
+						for i := range childs {
+							if childs[i] == treeView.GetCurrentNode() {
+								offset = i + 1
+								break
+							}
+						}
+						for i := 0; i < len(childs); i++ {
+							child := childs[(offset+i+len(childs))%len(childs)]
+							if strings.HasPrefix(child.GetText(), string(r)) {
+								treeView.SetCurrentNode(child)
+								break
+							}
 						}
 					}
+
 				} else if ref := node.GetReference(); ref != nil {
-					// select first child context node beginning with rune of parent cluster node of selected context node
+					// select next child context node in parent cluster node of current selection beginning with typed rune
 					if ref, ok := ref.(*tview.TreeNode); ok {
 						childs := ref.GetChildren()
 						var offset int

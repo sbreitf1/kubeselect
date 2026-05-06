@@ -6,26 +6,76 @@ import (
 	"os/user"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
+type KubeConfig struct {
+	file           string
+	APIVersion     string                   `yaml:"apiVersion"`
+	Kind           string                   `yaml:"kind"`
+	CurrentContext string                   `yaml:"current-context"`
+	Clusters       []Cluster                `yaml:"clusters"`
+	Contexts       []Context                `yaml:"contexts"`
+	Users          []User                   `yaml:"users"`
+	Preferences    map[string]interface{}   `yaml:"preferences"`
+	Extensions     []map[string]interface{} `yaml:"extensions,omitempty"`
+}
+
+type Cluster struct {
+	Name string                 `yaml:"name"`
+	Data map[string]interface{} `yaml:"cluster"`
+}
+
+/*type ClusterData struct {
+	Server                   string                   `yaml:"server"`
+	TLSServerName            string                   `yaml:"tls-server-name,omitempty"`
+	InsecureSkipTLSVerify    bool                     `yaml:"insecure-skip-tls-verify,omitempty"`
+	CertificateAuthority     string                   `yaml:"certificate-authority,omitempty"`
+	CertificateAuthorityData string                   `yaml:"certificate-authority-data,omitempty"`
+	ProxyURL                 string                   `yaml:"proxy-url,omitempty"`
+	DisableCompression       bool                     `yaml:"disable-compression,omitempty"`
+	Extensions               []map[string]interface{} `yaml:"extensions,omitempty"`
+}*/
+
+type Context struct {
+	Name string      `yaml:"name"`
+	Data ContextData `yaml:"context"`
+}
+
+type ContextData struct {
+	Cluster    string                   `yaml:"cluster"`
+	User       string                   `yaml:"user"`
+	Namespace  string                   `yaml:"namespace,omitempty"`
+	Extensions []map[string]interface{} `yaml:"extensions,omitempty"`
+}
+
+type User struct {
+	Name string                 `yaml:"name"`
+	Data map[string]interface{} `yaml:"user"`
+}
+
 func ReadKubeConfig() (*KubeConfig, error) {
-	kubeConfigFile, err := getKubeConfigFile()
+	kubeConfigFile, err := getKubeConfigFilePath()
 	if err != nil {
 		return nil, fmt.Errorf("get file path: %w", err)
 	}
 
-	conf, err := readKubeConfigFromFile(kubeConfigFile)
+	rawData, err := os.ReadFile(kubeConfigFile)
 	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
+		return nil, err
 	}
 
-	return conf, nil
+	var conf KubeConfig
+	if err := yaml.Unmarshal(rawData, &conf); err != nil {
+		return nil, err
+	}
+
+	conf.file = kubeConfigFile
+	return &conf, nil
 }
 
-func getKubeConfigFile() (string, error) {
+func getKubeConfigFilePath() (string, error) {
 	kubeConfigFile := os.Getenv("KUBECONFIG")
 
 	if len(kubeConfigFile) == 0 {
@@ -40,34 +90,12 @@ func getKubeConfigFile() (string, error) {
 	return kubeConfigFile, nil
 }
 
-type KubeConfig struct {
-	file string
-	data map[string]interface{}
-}
-
-func readKubeConfigFromFile(file string) (*KubeConfig, error) {
-	rawData, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	var data map[string]interface{}
-	if err := yaml.Unmarshal(rawData, &data); err != nil {
-		return nil, err
-	}
-
-	return &KubeConfig{
-		file: file,
-		data: data,
-	}, nil
-}
-
 func (conf *KubeConfig) File() string {
 	return conf.file
 }
 
 func (conf *KubeConfig) Save() error {
-	rawData, err := yaml.Marshal(&conf.data)
+	rawData, err := yaml.Marshal(conf)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
@@ -75,149 +103,21 @@ func (conf *KubeConfig) Save() error {
 	return os.WriteFile(conf.file, rawData, os.ModePerm)
 }
 
-type Context struct {
-	Context ContextData `yaml:"context"`
-	Name    string      `yaml:"name"`
+func (conf *KubeConfig) GetSortedClusterNames() []string {
+	clusterNames := make([]string, 0, len(conf.Clusters))
+	for _, cluster := range conf.Clusters {
+		clusterNames = append(clusterNames, cluster.Name)
+	}
+	sort.Strings(clusterNames)
+	return clusterNames
 }
 
-type ContextData struct {
-	Cluster   string `yaml:"cluster"`
-	Namespace string `yaml:"namespace"`
-	User      string `yaml:"user"`
-}
-
-func (conf *KubeConfig) Contexts() ([]Context, error) {
-	contextsObj, ok := conf.data["contexts"]
-	if !ok {
-		return nil, fmt.Errorf("missing 'contexts' in kube-config")
-	}
-
-	contextsList, ok := contextsObj.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid type '%T' for 'contexts' in kube-config", contextsObj)
-	}
-
+func (conf *KubeConfig) GetContextsForCluster(clusterName string) []Context {
 	contexts := make([]Context, 0)
-	for i, obj := range contextsList {
-		objMap, ok := obj.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d]' in kube-config", obj, i)
-		}
-
-		nameObj, ok := objMap["name"]
-		if !ok {
-			return nil, fmt.Errorf("missing 'contexts[%d].name' in kube-config", i)
-		}
-
-		name, ok := nameObj.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].name' in kube-config", nameObj, i)
-		}
-
-		contextObj, ok := objMap["context"]
-		if !ok {
-			return nil, fmt.Errorf("missing 'contexts[%d].context' in kube-config", i)
-		}
-
-		contextMap, ok := contextObj.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].context' in kube-config", contextObj, i)
-		}
-
-		clusterObj, ok := contextMap["cluster"]
-		if !ok {
-			return nil, fmt.Errorf("missing 'contexts[%d].context.cluster' in kube-config", i)
-		}
-
-		clusterName, ok := clusterObj.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].context.cluster' in kube-config", clusterObj, i)
-		}
-
-		namespaceObj, ok := contextMap["namespace"]
-		if !ok {
-			return nil, fmt.Errorf("missing 'contexts[%d].context.namespace' in kube-config", i)
-		}
-
-		namespace, ok := namespaceObj.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].context.namespace' in kube-config", namespaceObj, i)
-		}
-
-		userObj, ok := contextMap["user"]
-		if !ok {
-			return nil, fmt.Errorf("missing 'contexts[%d].context.user' in kube-config", i)
-		}
-
-		userName, ok := userObj.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid type '%T' for 'contexts[%d].context.user' in kube-config", userObj, i)
-		}
-
-		contexts = append(contexts, Context{
-			Context: ContextData{
-				Cluster:   clusterName,
-				Namespace: namespace,
-				User:      userName,
-			},
-			Name: name,
-		})
-	}
-	return contexts, nil
-}
-
-func (conf *KubeConfig) SetContexts(contexts []Context) {
-	conf.data["contexts"] = contexts
-}
-
-func (conf *KubeConfig) SelectedContext() (string, error) {
-	currentContextObj, ok := conf.data["current-context"]
-	if !ok {
-		return "", nil
-	}
-
-	currentContext, ok := currentContextObj.(string)
-	if !ok {
-		return "", fmt.Errorf("invalid type '%T' for 'current-context' in kube-config", currentContextObj)
-	}
-
-	return currentContext, nil
-}
-
-func (conf *KubeConfig) SetSelectedContext(contextName string) {
-	conf.data["current-context"] = contextName
-}
-
-type ClusterWithContexts struct {
-	Name     string
-	Contexts []Context
-}
-
-func GroupContextsByCluster(contexts []Context) []ClusterWithContexts {
-	clustersMap := make(map[string][]Context)
-	for _, c := range contexts {
-		if cluster, ok := clustersMap[c.Context.Cluster]; ok {
-			clustersMap[c.Context.Cluster] = append(cluster, c)
-		} else {
-			clustersMap[c.Context.Cluster] = []Context{c}
+	for _, context := range conf.Contexts {
+		if context.Data.Cluster == clusterName {
+			contexts = append(contexts, context)
 		}
 	}
-
-	clusters := make([]ClusterWithContexts, 0)
-	for clusterName, contexts := range clustersMap {
-		sort.Slice(contexts, func(i, j int) bool {
-			return strings.Compare(contexts[i].Name, contexts[j].Name) < 0
-		})
-
-		clusters = append(clusters, ClusterWithContexts{
-			Name:     clusterName,
-			Contexts: contexts,
-		})
-	}
-
-	sort.Slice(clusters, func(i, j int) bool {
-		return strings.Compare(clusters[i].Name, clusters[j].Name) < 0
-	})
-
-	return clusters
+	return contexts
 }

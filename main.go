@@ -39,6 +39,9 @@ func execCmd(cmd string) error {
 	case "update":
 		return cmdUpdateConfigFile(conf)
 
+		//TODO add cluster command to enter new kubeconfig
+		//TODO remove cluster command
+
 	default:
 		return fmt.Errorf("unknown command %q", cmd)
 	}

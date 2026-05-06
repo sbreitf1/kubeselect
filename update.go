@@ -19,17 +19,16 @@ import (
 )
 
 func cmdUpdateConfigFile(conf *KubeConfig) error {
-	contexts, err := conf.Contexts()
-	if err != nil {
-		return fmt.Errorf("parse contexts: %w", err)
-	}
+	return fmt.Errorf("update not implemented in current version")
+
+	contexts := []Context{}
 
 	if len(contexts) == 0 {
 		fmt.Println("no contexts defined")
 		return nil
 	}
 
-	clusters := GroupContextsByCluster(contexts)
+	clusters := []Cluster{}
 
 	loadingRules := &clientcmd.ClientConfigLoadingRules{Precedence: strings.Split(conf.file, ":")}
 	apiConf, err := loadingRules.Load()
@@ -43,7 +42,7 @@ func cmdUpdateConfigFile(conf *KubeConfig) error {
 	var wg sync.WaitGroup
 	for _, cluster := range clusters {
 		wg.Go(func() {
-			namespaces, err := getNamespacesInContextsCluster(apiConf, cluster.Contexts[0].Name)
+			namespaces, err := getNamespacesInContextsCluster(apiConf, "context-name")
 			if err != nil {
 				fmt.Println("WARN: gather namespaces for cluster "+cluster.Name+":", err)
 				return
@@ -55,10 +54,10 @@ func cmdUpdateConfigFile(conf *KubeConfig) error {
 			sort.Strings(namespaces)
 			for _, ns := range namespaces {
 				newContexts = append(newContexts, Context{
-					Context: ContextData{
+					Data: ContextData{
 						Cluster:   cluster.Name,
 						Namespace: ns,
-						User:      cluster.Contexts[0].Context.User,
+						User:      "context-user",
 					},
 					Name: fmt.Sprintf("%s-%s", cluster.Name, ns),
 				})
@@ -67,7 +66,7 @@ func cmdUpdateConfigFile(conf *KubeConfig) error {
 	}
 	wg.Wait()
 
-	conf.SetContexts(newContexts)
+	//conf.SetContexts(newContexts)
 	if err := conf.Save(); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
