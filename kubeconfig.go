@@ -88,7 +88,36 @@ func ParseKubeConfig(data []byte) (*KubeConfig, error) {
 }
 
 func (conf *KubeConfig) SanityCheck() {
-	//TODO print all warnings
+	clusters := make(map[string]Cluster)
+	for _, cluster := range conf.Clusters {
+		clusters[cluster.Name] = cluster
+	}
+	users := make(map[string]User)
+	for _, user := range conf.Users {
+		users[user.Name] = user
+	}
+
+	// display unknown cluster or user references
+	for _, context := range conf.Contexts {
+		if _, ok := clusters[context.Data.Cluster]; !ok {
+			fmt.Println("WARN: context", context.Name, "references unknown cluster", context.Data.Cluster)
+		}
+		if _, ok := users[context.Data.User]; !ok {
+			fmt.Println("WARN: context", context.Name, "references unknown user", context.Data.User)
+		}
+	}
+
+	// remove all referenced clusters and users from map to detect unreferenced ones
+	for _, context := range conf.Contexts {
+		delete(clusters, context.Data.Cluster)
+		delete(users, context.Data.User)
+	}
+	for clusterName := range clusters {
+		fmt.Println("WARN: cluster", clusterName, "is not referenced by any context")
+	}
+	for userName := range users {
+		fmt.Println("WARN: user", userName, "is not referenced by any context")
+	}
 }
 
 func (conf *KubeConfig) File() string {
