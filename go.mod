@@ -3,6 +3,7 @@ module github.com/sbreitf1/kubeselect
 go 1.26.0
 
 require (
+	github.com/adrg/strutil v0.3.1
 	github.com/alecthomas/kong v1.15.0
 	github.com/gdamore/tcell/v2 v2.13.9
 	github.com/rivo/tview v0.42.0

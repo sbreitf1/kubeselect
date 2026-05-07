@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/adrg/strutil"
+	"github.com/adrg/strutil/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -96,10 +98,39 @@ func findUserForCluster(conf *KubeConfig, apiConf *api.Config, clusterName strin
 		return user, nil
 	}
 
-	//fmt.Println("WARN: no contexts for cluster", clusterName, "defined yet. need to auto-detect user")
+	//TODO maybe interactive selection instead?
+	fmt.Println("WARN: no contexts for cluster", clusterName, "defined yet. need to auto-detect user")
 
-	//TODO auto-detect user for cluster
-	return "", fmt.Errorf("user auto-detection not implemented")
+	userNames := make([]string, 0, len(conf.Users))
+	for _, user := range conf.Users {
+		userNames = append(userNames, user.Name)
+	}
+
+	// sort user names by similarity to cluster name to increase probability of finding the right one early
+	metric := metrics.NewSorensenDice()
+	metric.CaseSensitive = false
+	metric.NgramSize = 2
+	sort.Slice(userNames, func(i, j int) bool {
+		si := strutil.Similarity(clusterName, userNames[i], metric)
+		sj := strutil.Similarity(clusterName, userNames[j], metric)
+		return si > sj
+	})
+
+	// now try every user in the list
+	for _, userName := range userNames {
+		//TODO try in parallel?
+		fmt.Println("-> try user", userName, "for cluster", clusterName)
+		ok, err := isCorrectUserForCluster(apiConf, clusterName, userName)
+		if err != nil {
+			return "", err
+		}
+
+		if ok {
+			return userName, nil
+		}
+	}
+
+	return "", fmt.Errorf("no suitable user defined")
 }
 
 func findUserForClusterFromExistingContext(conf *KubeConfig, clusterName string) (string, bool) {
@@ -117,8 +148,13 @@ func findUserForClusterFromExistingContext(conf *KubeConfig, clusterName string)
 	return "", false
 }
 
+func isCorrectUserForCluster(apiConf *api.Config, clusterName, userName string) (bool, error) {
+	//TODO some smarter way to decide if user is correct
+	_, err := getNamespacesInContextsCluster(apiConf, clusterName, userName)
+	return err == nil, nil
+}
+
 func getNamespacesInContextsCluster(apiConf *api.Config, clusterName, userName string) ([]string, error) {
-	//config, err := clientcmd.NewDefaultClientConfig(*apiConf, &clientcmd.ConfigOverrides{CurrentContext: contextName}).ClientConfig()
 	config, err := prepareClientConfig(apiConf, clusterName, userName)
 	if err != nil {
 		return nil, err
