@@ -17,6 +17,9 @@ kubeselect select
 
 # create contexts for all namespaces for clusters that are referenced by existing contexts
 kubeselect update
+
+# delete unreferenced clusters and users, aswell as invalid contexts
+kubeselect prune
 ```
 
 Use arrow keys up and down to navigate to another context, press enter to switch to the highlighted context. Currently selected context is marked as yellow. Press escape to exit without changing the selected context.
