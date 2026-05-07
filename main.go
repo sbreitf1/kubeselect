@@ -14,6 +14,9 @@ var (
 
 		Update struct {
 		} `cmd:"update" help:"Create Contexts for all Namespaces in configured Clusters."`
+
+		Prune struct {
+		} `cmd:"prune" help:"Remove invalid or unreferenced Entries from KubeConfig."`
 	}
 )
 
@@ -43,6 +46,9 @@ func execCmd(cmd string) error {
 
 		//TODO add cluster command to enter new kubeconfig
 		//TODO remove cluster command
+
+	case "prune":
+		return cmdPruneConfigFile(conf)
 
 	default:
 		return fmt.Errorf("unknown command %q", cmd)

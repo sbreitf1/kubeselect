@@ -151,3 +151,33 @@ func (conf *KubeConfig) GetContextsForCluster(clusterName string) []Context {
 	}
 	return contexts
 }
+
+func (conf *KubeConfig) RemoveClusterByName(clusterName string) bool {
+	for i := range conf.Clusters {
+		if conf.Clusters[i].Name == clusterName {
+			conf.Clusters = append(conf.Clusters[:i], conf.Clusters[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+func (conf *KubeConfig) RemoveContextByName(contextName string) bool {
+	for i := range conf.Contexts {
+		if conf.Contexts[i].Name == contextName {
+			conf.Contexts = append(conf.Contexts[:i], conf.Contexts[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+func (conf *KubeConfig) RemoveUserByName(userName string) bool {
+	for i := range conf.Users {
+		if conf.Users[i].Name == userName {
+			conf.Users = append(conf.Users[:i], conf.Users[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
