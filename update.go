@@ -67,7 +67,7 @@ func cmdUpdateConfigFile(conf *KubeConfig) error {
 						Namespace: ns,
 						User:      clusterUser,
 					},
-					Name: fmt.Sprintf("%s-%s", cluster.Name, ns),
+					Name: genContextName(cluster.Name, ns),
 				})
 			}
 
@@ -91,6 +91,10 @@ func cmdUpdateConfigFile(conf *KubeConfig) error {
 
 	fmt.Println("contexts have been updated")
 	return nil
+}
+
+func genContextName(clusterName, namespace string) string {
+	return fmt.Sprintf("%s-%s", clusterName, namespace)
 }
 
 func findUserForCluster(conf *KubeConfig, apiConf *api.Config, clusterName string) (string, error) {

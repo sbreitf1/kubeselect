@@ -63,12 +63,14 @@ func cmdPruneConfigFile(conf *KubeConfig) error {
 		}
 	}
 
-	fmt.Print("proceed? (y/N) ")
-	var input string
-	fmt.Scanln(&input)
-	if input != "y" && input != "Y" {
-		fmt.Println("user abort")
-		return nil
+	if !cli.Prune.Yes {
+		fmt.Print("proceed? (y/N) ")
+		var input string
+		fmt.Scanln(&input)
+		if input != "y" && input != "Y" {
+			fmt.Println("user abort")
+			return nil
+		}
 	}
 
 	for _, clusterName := range delClusters {

@@ -15,7 +15,19 @@ var (
 		Update struct {
 		} `cmd:"update" help:"Create Contexts for all Namespaces in configured Clusters. Contexts of unreachable Clusters remain untouched."`
 
+		Merge struct {
+		} `cmd:"merge" help:"Enter a KubeConfig to merge to local KubeConfig."`
+
+		//TODO rename cluster command
+
+		//TODO remove cluster command
+
+		//TODO rename user command
+
+		//TODO remove user command
+
 		Prune struct {
+			Yes bool `short:"y" help:"Skip user confirmation."`
 		} `cmd:"prune" help:"Remove invalid or unreferenced Entries from KubeConfig. Displays items first and waits for user confirmation."`
 	}
 )
@@ -44,8 +56,8 @@ func execCmd(cmd string) error {
 	case "update":
 		return cmdUpdateConfigFile(conf)
 
-		//TODO add cluster command to enter new kubeconfig
-		//TODO remove cluster command
+	case "merge":
+		return cmdMergeKubeConfig(conf)
 
 	case "prune":
 		return cmdPruneConfigFile(conf)
