@@ -82,7 +82,7 @@ func cmdPruneConfigFile(conf *KubeConfig) error {
 	}
 
 	if err := conf.Save(); err != nil {
-		return err
+		return fmt.Errorf("write config: %w", err)
 	}
 
 	fmt.Println("config pruned")
