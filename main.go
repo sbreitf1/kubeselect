@@ -13,10 +13,10 @@ var (
 		} `cmd:"select" default:"withargs" help:"Select active Kubernetes Context."`
 
 		Update struct {
-		} `cmd:"update" help:"Create Contexts for all Namespaces in configured Clusters."`
+		} `cmd:"update" help:"Create Contexts for all Namespaces in configured Clusters. Contexts of unreachable Clusters remain untouched."`
 
 		Prune struct {
-		} `cmd:"prune" help:"Remove invalid or unreferenced Entries from KubeConfig."`
+		} `cmd:"prune" help:"Remove invalid or unreferenced Entries from KubeConfig. Displays items first and waits for user confirmation."`
 	}
 )
 
